@@ -78,6 +78,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
   
   // Animation scales for buttons
   double _extensionsButtonScale = 1.0;
+  double _searchButtonScale = 1.0;
   double _micButtonScale = 1.0;
   double _sendButtonScale = 1.0;
 
@@ -346,7 +347,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
           child: SafeArea(
             child: Row(
               children: [
-                // Extensions button with animation
+                // Extensions button with animation (shown as attachment icon)
                 GestureDetector(
                   onTapDown: (_) => setState(() => _extensionsButtonScale = 0.85),
                   onTapUp: (_) {
@@ -365,7 +366,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                           width: 48,
                           height: 48,
                           child: Icon(
-                            Icons.extension_outlined,
+                            CupertinoIcons.paperclip,
                             color: _isAnyExtensionActive()
                                 ? Theme.of(context).colorScheme.primary
                                 : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
@@ -396,7 +397,46 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
-                
+
+                const SizedBox(width: 4),
+
+                // Web search toggle button
+                GestureDetector(
+                  onTapDown: (_) => setState(() => _searchButtonScale = 0.85),
+                  onTapUp: (_) {
+                    setState(() => _searchButtonScale = 1.0);
+                    setState(() {
+                      _webSearchMode = !_webSearchMode;
+                      if (_webSearchMode) {
+                        _imageGenerationMode = false;
+                        _diagramGenerationMode = false;
+                        _presentationGenerationMode = false;
+                        _flashcardGenerationMode = false;
+                        _quizGenerationMode = false;
+                      }
+                    });
+                  },
+                  onTapCancel: () => setState(() => _searchButtonScale = 1.0),
+                  child: AnimatedScale(
+                    scale: _searchButtonScale,
+                    duration: const Duration(milliseconds: 150),
+                    curve: Curves.easeOutCubic,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      child: Icon(
+                        CupertinoIcons.search,
+                        color: _webSearchMode
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 4),
+
                 // Text input - no background
                 Expanded(
                   child: TextField(
@@ -609,18 +649,6 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
         presentationGenerationMode: _presentationGenerationMode,
         flashcardGenerationMode: _flashcardGenerationMode,
         quizGenerationMode: _quizGenerationMode,
-        webSearchMode: _webSearchMode,
-        onImageUpload: () async {
-          Navigator.pop(context);
-          await AdService.instance.onExtensionFeatureUsed();
-          await _handleImageUpload();
-        },
-        onPdfUpload: () async {
-          Navigator.pop(context);
-          await AdService.instance.onExtensionFeatureUsed();
-          await _handlePdfUpload();
-        },
-
         onImageModeToggle: (enabled) {
           setState(() {
             _imageGenerationMode = enabled;
@@ -629,7 +657,6 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
               _presentationGenerationMode = false;
               _flashcardGenerationMode = false;
               _quizGenerationMode = false;
-              _webSearchMode = false;
             }
           });
           Navigator.pop(context);
@@ -647,7 +674,6 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
               _presentationGenerationMode = false;
               _flashcardGenerationMode = false;
               _quizGenerationMode = false;
-              _webSearchMode = false;
             }
           });
           Navigator.pop(context);
@@ -660,7 +686,6 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
               _diagramGenerationMode = false;
               _flashcardGenerationMode = false;
               _quizGenerationMode = false;
-              _webSearchMode = false;
             }
           });
           Navigator.pop(context);
@@ -673,7 +698,6 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
               _diagramGenerationMode = false;
               _presentationGenerationMode = false;
               _quizGenerationMode = false;
-              _webSearchMode = false;
             }
           });
           Navigator.pop(context);
@@ -686,20 +710,6 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
               _diagramGenerationMode = false;
               _presentationGenerationMode = false;
               _flashcardGenerationMode = false;
-              _webSearchMode = false;
-            }
-          });
-          Navigator.pop(context);
-        },
-        onWebSearchToggle: (enabled) {
-          setState(() {
-            _webSearchMode = enabled;
-            if (enabled) {
-              _imageGenerationMode = false;
-              _diagramGenerationMode = false;
-              _presentationGenerationMode = false;
-              _flashcardGenerationMode = false;
-              _quizGenerationMode = false;
             }
           });
           Navigator.pop(context);
@@ -946,15 +956,11 @@ class _ExtensionsBottomSheet extends StatelessWidget {
   final bool presentationGenerationMode;
   final bool flashcardGenerationMode;
   final bool quizGenerationMode;
-  final bool webSearchMode;
-  final VoidCallback onImageUpload;
-  final VoidCallback onPdfUpload;
   final Function(bool) onImageModeToggle;
   final Function(bool) onDiagramToggle;
   final Function(bool) onPresentationToggle;
   final Function(bool) onFlashcardToggle;
   final Function(bool) onQuizToggle;
-  final Function(bool) onWebSearchToggle;
   final VoidCallback onEnhancePrompt;
 
   const _ExtensionsBottomSheet({
@@ -963,15 +969,11 @@ class _ExtensionsBottomSheet extends StatelessWidget {
     this.presentationGenerationMode = false,
     this.flashcardGenerationMode = false,
     this.quizGenerationMode = false,
-    this.webSearchMode = false,
-    required this.onImageUpload,
-    required this.onPdfUpload,
     required this.onImageModeToggle,
     required this.onDiagramToggle,
     required this.onPresentationToggle,
     required this.onFlashcardToggle,
     required this.onQuizToggle,
-    required this.onWebSearchToggle,
     required this.onEnhancePrompt,
   });
 
@@ -999,30 +1001,6 @@ class _ExtensionsBottomSheet extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                // First row - File operations only
-                Row(
-                  children: [
-                    Expanded(
-                      child: _CompactExtensionTile(
-                        icon: CupertinoIcons.photo,
-                        title: 'Analyze Image',
-                        onTap: onImageUpload,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _CompactExtensionTile(
-                        icon: CupertinoIcons.folder,
-                        title: 'Upload File',
-                        onTap: onPdfUpload,
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 12),
-                
-                // Second row - Enhance Prompt, Image generation, Web Search
                 Row(
                   children: [
                     Expanded(
@@ -1045,23 +1023,6 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _ExtensionTile(
-                        icon: CupertinoIcons.search,
-                        title: 'Web Search',
-                        subtitle: '',
-                        isToggled: webSearchMode,
-                        onTap: () => onWebSearchToggle(!webSearchMode),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 10),
-
-                // Third row - Diagram, Presentation, Flashcards
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ExtensionTile(
                         icon: CupertinoIcons.graph_square,
                         title: 'Diagram',
                         subtitle: '',
@@ -1069,7 +1030,13 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                         onTap: () => onDiagramToggle(!diagramGenerationMode),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                Row(
+                  children: [
                     Expanded(
                       child: _ExtensionTile(
                         icon: CupertinoIcons.rectangle_on_rectangle_angled,
@@ -1089,14 +1056,7 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                         onTap: () => onFlashcardToggle(!flashcardGenerationMode),
                       ),
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 10),
-
-                // Fourth row - Quiz
-                Row(
-                  children: [
+                    const SizedBox(width: 10),
                     Expanded(
                       child: _ExtensionTile(
                         icon: CupertinoIcons.question_circle,
@@ -1106,10 +1066,6 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                         onTap: () => onQuizToggle(!quizGenerationMode),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(child: Container()),
-                    const SizedBox(width: 10),
-                    Expanded(child: Container()),
                   ],
                 ),
               ],
